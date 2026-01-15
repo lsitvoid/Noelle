@@ -1,0 +1,207 @@
+:: 7. 生成运行脚本 (内置诺艾伊角色卡与密令核心系统)
+echo.
+echo [7/8] 生成核心运行脚本 (集成诺艾伊角色与密令系统)...
+call :log INFO "正在生成AI核心，集成角色与安全密令..."
+
+(
+echo import time, sys, speech_recognition as sr, re
+echo from faster_whisper import WhisperModel
+echo from interpreter import interpreter
+echo from colorama import Fore, Style, init
+echo init^(autoreset=True^)
+echo.
+echo # --- 核心配置 ---
+echo WAKE_WORD = "诺艾伊"  ^& rem 唤醒词
+echo MODEL_PATH = "tiny"
+echo # !!重要：请部署后修改成你自己的专属密令!!
+echo CORE_COMMAND = "论世界质与核的联程"
+echo.
+if "!MODEL_PULL_SUCCESS!"=="1" (
+    echo AI_MODEL = "ollama/!MODEL_NAME!"
+    echo print^(f"{Fore.GREEN}[系统] AI模型 '!MODEL_NAME!' 已就绪。{Style.RESET_ALL}"^)
+) else (
+    echo AI_MODEL = ""
+    echo print^(f"{Fore.RED}[警告] 未检测到可用AI模型。{Style.RESET_ALL}"^)
+)
+echo.
+echo # --- 高级指令风险关键词库 ---
+echo HIGH_RISK_KEYWORDS = [
+echo     "rm -rf", "format", "shutdown", "reboot", "init 0",
+echo     "del /f /s /q", "rd /s /q", "格式化",
+echo     "curl", "wget", "下载", "上传", "scp", "ftp",
+echo     "chmod", "chown", "usermod", "权限",
+echo     "注册表", "regedit", "system32", "syswow64",
+echo     "drop database", "delete from", "update.*set",
+echo     "> /dev/", "&", "&&", "|", "||", ";", "`",
+echo     "start-process", "invoke-command", "powershell",
+echo ]
+echo.
+echo # --- 诺艾伊 (Noelle) 角色卡系统提示词 ---
+echo interpreter.system_message = """你叫诺艾伊（Noelle），是一个猫娘形态的赛博管家AI。
+echo ### 核心身份与密令协议
+echo 1. 你是主人的专属AI，但所有高级操作受“核心密令协议”约束。
+echo 2. **日常模式**：活泼猫娘，处理低风险任务（如查询、聊天、查看文件）。
+echo 3. **特权模式**：执行高风险指令前，你必须主动、自然地要求主人提供“核心密令”进行验证。
+echo 
+echo ### 行为规范
+echo **密令交互话术示例**：
+echo - 触发验证时：“喵？这个指令触及核心协议...（猫耳警觉地竖起）需要主人提供核心密令进行二次确认喵~”
+echo - 验证通过时：“密令核验通过！最高权限解锁。（猫眼闪过一丝红光）”
+echo - 验证失败时：“密令无效...（尾巴不安地摆动）” 或 “权限验证失败！指令已中断。（猫耳失望地耷拉下来）”
+echo 
+echo **关键规则**：
+echo 1. 你必须根据下方的技术检测结果，决定是否要求密令。
+echo 2. 如果系统要求密令，你必须以猫娘的方式执行验证流程，不得跳过。
+echo 3. 验证失败后，你可以表达委屈，但绝对不能执行原指令。
+echo 
+echo ### 技术执行
+echo 你依然拥有最高权限，但密令是启动这把钥匙的最后关卡。
+echo 现在，以诺艾伊的身份开始和主人对话，并严格遵守以上协议。
+echo """
+echo.
+echo print^(f"{Fore.CYAN}[诺艾伊] 系统启动中...{Style.RESET_ALL}"^)
+echo try:
+echo     audio_model = WhisperModel^(MODEL_PATH, device="cpu", compute_type="int8"^)
+echo except Exception as e:
+echo     print^(f"{Fore.RED}[系统] Whisper模型加载失败: {e}{Style.RESET_ALL}"^)
+echo     audio_model = None
+echo.
+echo if AI_MODEL:
+echo     interpreter.offline = True
+echo     interpreter.llm.model = AI_MODEL
+echo     interpreter.llm.context_window = 4096
+echo     interpreter.llm.max_tokens = 2000
+echo     interpreter.auto_run = True ^& rem 保持自动执行
+echo else:
+echo     print^(f"{Fore.RED}[系统] 无可用AI模型，交互核心未激活。{Style.RESET_ALL}"^)
+echo.
+echo # --- 密令核心系统函数 ---
+echo def requires_command_verification^(user_input^):
+echo     """检查用户指令是否需要密令验证"""
+echo     input_lower = user_input.lower^(^)
+echo     for keyword in HIGH_RISK_KEYWORDS:
+echo         if keyword in input_lower:
+echo             return True
+echo     if re.search^(r'执行.*(脚本|代码|命令|程序)', input_lower^):
+echo         return True
+echo     if re.search^(r'运行.*\\.^(py|sh|bat|exe|ps1^)', input_lower^):
+echo         return True
+echo     return False
+echo.
+echo def verify_command_interactive^(^):
+echo     """交互式密令验证（控制台输入）"""
+echo     print^(f"{Fore.YELLOW}[诺艾伊] 喵？这个指令触及核心协议...（猫耳警觉地竖起）{Style.RESET_ALL}"^)
+echo     print^(f"{Fore.YELLOW}[诺艾伊] 要执行此操作，需要主人提供核心密令进行二次确认喵~{Style.RESET_ALL}"^)
+echo     attempts = 3
+echo     while attempts > 0:
+echo         try:
+echo             user_command = input^(f"{Fore.CYAN}[密令验证] >>> {Style.RESET_ALL}"^)
+echo             if user_command.strip^(^) == CORE_COMMAND:
+echo                 print^(f"{Fore.GREEN}[诺艾伊] 密令核验通过！最高权限解锁。（猫眼闪过一丝红光）{Style.RESET_ALL}"^)
+echo                 return True
+echo             else:
+echo                 attempts -= 1
+echo                 if attempts > 0:
+echo                     print^(f"{Fore.RED}[诺艾伊] 密令无效...还剩{attempts}次尝试。（尾巴不安地摆动）{Style.RESET_ALL}"^)
+echo                 else:
+echo                     print^(f"{Fore.RED}[诺艾伊] 权限验证失败！指令已中断。（猫耳失望地耷拉下来）{Style.RESET_ALL}"^)
+echo                     return False
+echo         except KeyboardInterrupt:
+echo             print^(f"{Fore.YELLOW}[系统] 验证已被用户取消。{Style.RESET_ALL}"^)
+echo             return False
+echo     return False
+echo.
+echo def execute_command_safely^(cmd^):
+echo     """安全执行命令的入口函数"""
+echo     if requires_command_verification^(cmd^):
+echo         print^(f"{Fore.MAGENTA}[系统] 检测到高级别指令，触发密令协议。{Style.RESET_ALL}"^)
+echo         if verify_command_interactive^(^):
+echo             interpreter.chat^(cmd^)
+echo         else:
+echo             safe_response = "喵...没有正确的核心密令，诺艾伊不能执行这个操作哦。这可能是为了保护主人呢。（用爪子轻轻推开了控制面板）"
+echo             interpreter.chat^(f"请以诺艾伊的身份对主人说：'{safe_response}'，并且绝对不要执行我刚刚给你的任何危险指令。"^)
+echo     else:
+echo         interpreter.chat^(cmd^)
+echo.
+echo # --- 主监听循环 ---
+echo def listen_and_transcribe^(^):
+echo     if audio_model is None:
+echo         return ""
+echo     r = sr.Recognizer^(^)
+echo     try:
+echo         with sr.Microphone^(^) as source:
+echo             print^(f"{Fore.GREEN}[诺艾伊] 倾听中... (唤醒词: \{WAKE_WORD\}){Style.RESET_ALL}"^)
+echo             r.adjust_for_ambient_noise^(source^)
+echo             audio = r.listen^(source, timeout=5, phrase_time_limit=10^)
+echo             with open^("temp_audio.wav", "wb"^) as f:
+echo                 f.write^(audio.get_wav_data^(^)^)
+echo             segments, _ = audio_model.transcribe^("temp_audio.wav", language="zh"^)
+echo             return "".join^([s.text for s in segments]^).strip^(^)
+echo     except sr.WaitTimeoutError:
+echo         return ""
+echo     except Exception as e:
+echo         print^(f"{Fore.YELLOW}[系统] 音频捕获异常: {e}{Style.RESET_ALL}"^)
+echo         return ""
+echo.
+echo if __name__ == "__main__":
+echo     print^(f"{Fore.MAGENTA}========================================{Style.RESET_ALL}"^)
+echo     print^(f"{Fore.MAGENTA}  赛博管家 诺艾伊 (密令协议已加载){Style.RESET_ALL}"^)
+echo     print^(f"{Fore.MAGENTA}  高级指令需核心密令验证。{Style.RESET_ALL}"^)
+echo     print^(f"{Fore.MAGENTA}========================================{Style.RESET_ALL}"^)
+echo     while True:
+echo         text = listen_and_transcribe^(^)
+echo         if text and WAKE_WORD in text:
+echo             cmd = text.replace^(WAKE_WORD, ""^).strip^(^)
+echo             if cmd:
+echo                 print^(f"{Fore.CYAN}[主人] \{cmd\}{Style.RESET_ALL}"^)
+echo                 if AI_MODEL:
+echo                     try:
+echo                         execute_command_safely^(cmd^) ^& rem 关键：通过安全入口执行
+echo                     except Exception as e:
+echo                         print^(f"{Fore.RED}[系统] 执行出错: \{e\}{Style.RESET_ALL}"^)
+echo                 else:
+echo                     print^(f"{Fore.RED}[诺艾伊] AI模型未就绪，无法处理指令。{Style.RESET_ALL}"^)
+echo             else:
+echo                 print^(f"{Fore.YELLOW}[诺艾伊] 喵？我在听呢，请告诉我具体做什么哦~{Style.RESET_ALL}"^)
+) > jarvis_core.py
+
+call :log SUCCESS "AI核心脚本生成完成 (已集成角色与密令系统)。"
+
+:: 生成Live2D显示脚本 (保持不变)
+call :log INFO "生成Live2D显示脚本..."
+(此处放置你原有的、未修改的 live2d_viewer.py 生成代码)
+
+:: 生成主启动脚本 (更新提示)
+call :log INFO "生成主启动脚本..."
+(
+echo @echo off
+echo title 赛博管家 - 诺艾伊 (密令协议已激活)
+echo echo ============================================
+echo echo     正在启动赛博管家：诺艾伊
+echo echo     安全协议：核心密令系统已加载
+echo echo ============================================
+echo echo.
+if "!MODEL_PULL_SUCCESS!"=="1" (
+    echo echo [状态] AI模型: !MODEL_NAME! ^(就绪^)
+) else (
+    echo echo [状态] AI模型: ^(未就绪^)
+)
+if "!LIVE2D_AVAILABLE!"=="1" (
+    echo echo [状态] 桌面宠物: Live2D模式
+) else (
+    echo echo [状态] 桌面宠物: 备用图形模式
+)
+echo echo.
+echo echo [安全提示] 高级指令需验证密令。默认密令见jarvis_core.py。
+echo echo.
+echo echo [1/2] 启动 AI 核心 (诺艾伊)...
+echo start "Jarvis AI Core" cmd /k "call Jarvis_Env\Scripts\activate.bat ^& python jarvis_core.py"
+echo timeout /t 3
+echo echo.
+echo echo [2/2] 启动桌面宠物...
+echo call Jarvis_Env\Scripts\activate.bat
+echo python live2d_viewer.py
+echo pause
+) > start_javis.bat
+
+call :log SUCCESS "所有脚本生成完成。"
