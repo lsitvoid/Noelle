@@ -205,3 +205,185 @@ echo pause
 ) > start_javis.bat
 
 call :log SUCCESS "所有脚本生成完成。"
+
+
+
+
+
+注：因为是系统管家，所以请不要为他设置情绪值，因为如果情绪太低的话，他可能会擅自调用某些指令来攻击你的电脑>_<
+
+
+
+
+此处留白
+:: 7. 生成运行脚本 (集成简化版状态锁密令系统)
+echo.
+echo [7/8] 生成核心运行脚本 (集成状态锁密令系统)...
+call :log INFO "正在生成AI核心..."
+
+(
+echo import time, sys, speech_recognition as sr, re
+echo from faster_whisper import WhisperModel
+echo from interpreter import interpreter
+echo from colorama import Fore, Style, init
+echo init^(autoreset=True^)
+echo.
+echo # --- 核心配置 ---
+echo WAKE_WORD = "诺艾伊"
+echo MODEL_PATH = "tiny"
+echo # !!重要：请部署后修改成你自己的专属密令!!
+echo CORE_COMMAND = "论世界质与核的联程"
+echo.
+echo # --- 全局状态锁 (默认为锁定状态) ---
+echo UNLOCKED = False
+echo.
+if "!MODEL_PULL_SUCCESS!"=="1" (
+    echo AI_MODEL = "ollama/!MODEL_NAME!"
+    echo print^(f"{Fore.GREEN}[系统] AI模型 '!MODEL_NAME!' 已就绪。{Style.RESET_ALL}"^)
+) else (
+    echo AI_MODEL = ""
+    echo print^(f"{Fore.RED}[警告] 未检测到可用AI模型。{Style.RESET_ALL}"^)
+)
+echo.
+echo # --- 诺艾伊角色卡 (集成状态锁说明) ---
+echo interpreter.system_message = """你叫诺艾伊（Noelle），是一个猫娘形态的赛博管家AI。
+echo ### 核心身份与状态锁协议
+echo 1. 你拥有强大的系统操作能力，但受“状态锁”约束。
+echo 2. **锁定状态** (`UNLOCKED=False`)：你只能进行聊天、信息查询、回答问题等无害操作。**绝对不能执行任何文件操作、系统命令、代码执行或网络访问**。如果主人要求这些，你必须温柔地提醒他需要先解锁。
+echo 3. **解锁状态** (`UNLOCKED=True`)：在主人通过核心密令验证后，你将获得全部权限，可以执行主人的任何指令。
+echo 
+echo ### 关键行为准则
+echo 1. 你必须时刻遵守 `UNLOCKED` 变量的状态。
+echo 2. 当处于锁定状态时，如果主人提出需要权限的操作，你必须用类似以下方式回应：
+echo    “喵~要操作电脑的话，需要先对我说‘解锁系统’并进行密令验证哦~（猫耳期待地抖动）”
+echo 3. 当主人说出“诺艾伊，解锁系统”或类似意图时，你会触发密令验证流程。
+echo 4. 当主人说出“诺艾伊，锁定系统”时，你会立即将状态恢复为锁定。
+echo 5. 验证通过后，你可以用“最高权限已解锁！（猫眼闪过一丝红光）”来回应。
+echo 
+echo 现在，请严格遵守以上协议。当前状态：{"锁定" if not UNLOCKED else "解锁"}。
+echo """
+echo.
+echo print^(f"{Fore.CYAN}[诺艾伊] 系统启动中... 当前权限状态：锁定{Style.RESET_ALL}"^)
+echo try:
+echo     audio_model = WhisperModel^(MODEL_PATH, device="cpu", compute_type="int8"^)
+echo except Exception as e:
+echo     print^(f"{Fore.RED}[系统] Whisper模型加载失败: {e}{Style.RESET_ALL}"^)
+echo     audio_model = None
+echo.
+echo if AI_MODEL:
+echo     interpreter.offline = True
+echo     interpreter.llm.model = AI_MODEL
+echo     interpreter.llm.context_window = 4096
+echo     interpreter.llm.max_tokens = 2000
+echo     interpreter.auto_run = True
+echo else:
+echo     print^(f"{Fore.RED}[系统] 无可用AI模型，交互核心未激活。{Style.RESET_ALL}"^)
+echo.
+echo # --- 简化版密令验证函数 ---
+echo def verify_and_unlock^(^):
+echo     """验证密令，成功则解锁全局状态"""
+echo     global UNLOCKED
+echo     print^(f"{Fore.YELLOW}[诺艾伊] 喵？您想要解锁全部权限吗？（猫耳警觉地竖起）{Style.RESET_ALL}"^)
+echo     print^(f"{Fore.YELLOW}[诺艾伊] 请提供核心密令进行验证：{Style.RESET_ALL}"^)
+echo     attempts = 2
+echo     while attempts > 0:
+echo         try:
+echo             user_command = input^(f"{Fore.CYAN}[密令输入] >>> {Style.RESET_ALL}"^)
+echo             if user_command.strip^(^) == CORE_COMMAND:
+echo                 UNLOCKED = True
+echo                 print^(f"{Fore.GREEN}[诺艾伊] 密令核验通过！最高权限已解锁！（猫眼闪过一丝红光）{Style.RESET_ALL}"^)
+echo                 # 更新系统提示词中的状态描述
+echo                 interpreter.system_message = interpreter.system_message.replace^(
+echo                     '当前状态：{"锁定" if not UNLOCKED else "解锁"}。',
+echo                     '当前状态：解锁。'
+echo                 ^)
+echo                 return True
+echo             else:
+echo                 attempts -= 1
+echo                 if attempts > 0:
+echo                     print^(f"{Fore.RED}[诺艾伊] 密令无效...还剩{attempts}次尝试。（尾巴不安地摆动）{Style.RESET_ALL}"^)
+echo                 else:
+echo                     print^(f"{Fore.RED}[诺艾伊] 验证失败，保持锁定状态。（猫耳失望地耷拉下来）{Style.RESET_ALL}"^)
+echo                     return False
+echo         except KeyboardInterrupt:
+echo             print^(f"{Fore.YELLOW}[系统] 验证已取消。{Style.RESET_ALL}"^)
+echo             return False
+echo     return False
+echo.
+echo def check_and_lock^(cmd^):
+echo     """检查是否为锁定指令"""
+echo     global UNLOCKED
+echo     if "锁定系统" in cmd or "锁定权限" in cmd:
+echo         UNLOCKED = False
+echo         print^(f"{Fore.YELLOW}[诺艾伊] 已切换至安全锁定模式。（猫耳放松下来）{Style.RESET_ALL}"^)
+echo         interpreter.system_message = interpreter.system_message.replace^(
+echo             '当前状态：解锁。',
+echo             '当前状态：锁定。'
+echo         ^)
+echo         return True
+echo     return False
+echo.
+echo # --- 主指令处理逻辑（核心简化点）---
+echo def process_user_command^(cmd^):
+echo     """处理用户指令的入口"""
+echo     global UNLOCKED
+echo     # 1. 检查是否为“解锁系统”指令
+echo     if "解锁系统" in cmd or "开启权限" in cmd:
+echo         if verify_and_unlock^(^):
+echo             return
+echo         else:
+echo             return
+echo     # 2. 检查是否为“锁定系统”指令
+echo     if check_and_lock^(cmd^):
+echo         return
+echo     # 3. 根据当前状态决定是否执行
+echo     if not UNLOCKED:
+echo         # 锁定状态下，让AI自己用角色语气回应，但不执行操作。
+echo         reminder = "喵~要操作电脑的话，需要先对我说‘解锁系统’并进行密令验证哦~（猫耳期待地抖动）"
+echo         interpreter.chat^(f"请以诺艾伊的身份对主人说：'{reminder}'，并且不要执行任何实质性操作。"^)
+echo     else:
+echo         # 解锁状态下，直接执行所有指令
+echo         interpreter.chat^(cmd^)
+echo.
+echo # --- 主监听循环 ---
+echo def listen_and_transcribe^(^):
+echo     if audio_model is None:
+echo         return ""
+echo     r = sr.Recognizer^(^)
+echo     try:
+echo         with sr.Microphone^(^) as source:
+echo             print^(f"{Fore.GREEN}[诺艾伊] 倾听中... (唤醒词: \{WAKE_WORD\}){Style.RESET_ALL}"^)
+echo             r.adjust_for_ambient_noise^(source^)
+echo             audio = r.listen^(source, timeout=5, phrase_time_limit=10^)
+echo             with open^("temp_audio.wav", "wb"^) as f:
+echo                 f.write^(audio.get_wav_data^(^)^)
+echo             segments, _ = audio_model.transcribe^("temp_audio.wav", language="zh"^)
+echo             return "".join^([s.text for s in segments]^).strip^(^)
+echo     except sr.WaitTimeoutError:
+echo         return ""
+echo     except Exception as e:
+echo         print^(f"{Fore.YELLOW}[系统] 音频捕获异常: {e}{Style.RESET_ALL}"^)
+echo         return ""
+echo.
+echo if __name__ == "__main__":
+echo     print^(f"{Fore.MAGENTA}========================================{Style.RESET_ALL}"^)
+echo     print^(f"{Fore.MAGENTA}  赛博管家 诺艾伊 - 状态锁模式{Style.RESET_ALL}"^)
+echo     print^(f"{Fore.MAGENTA}  默认状态：锁定 (需解锁后才能操作系统){Style.RESET_ALL}"^)
+echo     print^(f"{Fore.MAGENTA}========================================{Style.RESET_ALL}"^)
+echo     while True:
+echo         text = listen_and_transcribe^(^)
+echo         if text and WAKE_WORD in text:
+echo             cmd = text.replace^(WAKE_WORD, ""^).strip^(^)
+echo             if cmd:
+echo                 print^(f"{Fore.CYAN}[主人] \{cmd\}{Style.RESET_ALL}"^)
+echo                 if AI_MODEL:
+echo                     try:
+echo                         process_user_command^(cmd^)
+echo                     except Exception as e:
+echo                         print^(f"{Fore.RED}[系统] 执行出错: \{e\}{Style.RESET_ALL}"^)
+echo                 else:
+echo                     print^(f"{Fore.RED}[诺艾伊] AI模型未就绪。{Style.RESET_ALL}"^)
+echo             else:
+echo                 print^(f"{Fore.YELLOW}[诺艾伊] 喵？我在听呢~{Style.RESET_ALL}"^)
+) > jarvis_core.py
+call :log SUCCESS "AI核心脚本生成完成 (集成简化状态锁)。"
