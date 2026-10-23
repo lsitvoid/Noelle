@@ -1,0 +1,22 @@
+# ---------- Linux 版 ----------
+.noelle/
+.noelle.old/
+backup/
+bin/noelle.real
+.local/
+*.log
+
+# ---------- Windows 版 ----------
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+config.json
+persona.md
+history.jsonl
+
+# ---------- 通用 ----------
+Thumbs.db
+desktop.ini
+.DS_Store

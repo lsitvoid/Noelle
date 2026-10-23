@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# ============================================================
+# noelle —— 独立实例启动器
+# 上游二进制不检查自身文件名，只认 MIYU_HOME，因此用环境变量隔离
+# ============================================================
+set -euo pipefail
+
+NOELLE_HOME="${NOELLE_HOME:-$HOME/noelle/.noelle}"
+NOELLE_BIN="${NOELLE_BIN:-$HOME/noelle/bin/noelle.real}"
+
+export MIYU_HOME="$NOELLE_HOME"
+
+if [ ! -x "$NOELLE_BIN" ]; then
+    echo "找不到 noelle 核心二进制: $NOELLE_BIN" >&2
+    echo "请先运行: ~/noelle/install.sh" >&2
+    exit 127
+fi
+
+# 配置不存在则初始化
+if [ ! -f "$NOELLE_HOME/config/config.jsonc" ]; then
+    "$NOELLE_BIN" init >/dev/null 2>&1 || true
+fi
+
+oobe_done() {
+    local f="$NOELLE_HOME/config/config.jsonc"
+    [ -f "$f" ] || return 1
+    grep -q '"oobe_done": true' "$f"
+}
+
+# 打印 NOELLE 字形（内置 logo 是编译期常量，无法改名，只能关掉后自绘）
+show_banner() {
+    local f="$HOME/noelle/assets/banner.txt"
+    [ -f "$f" ] || return 0
+    [ -t 1 ] || return 0
+    printf '\n\033[1;36m'
+    cat "$f"
+    printf '\033[0m\n'
+}
+
+case "${1:-}" in
+    normal)
+        shift
+        if ! oobe_done; then
+            echo "首次使用，先跑一遍新手引导（人格 / 功能 / 认识你 / 终端集成 / 接模型）"
+            echo "────────────────────────────────────────────────────────"
+            exec "$NOELLE_BIN" oobe "$@"
+        fi
+        show_banner
+        exec "$NOELLE_BIN" "$@"
+        ;;
+    dev)
+        shift
+        exec "$NOELLE_BIN" dev "$@"
+        ;;
+    oobe)
+        shift
+        exec "$NOELLE_BIN" oobe "$@"
+        ;;
+    *)
+        exec "$NOELLE_BIN" "$@"
+        ;;
+esac
